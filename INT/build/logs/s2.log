@@ -1,0 +1,41 @@
+Calling target program-options parser
+[08:06:25.690] [bmv2] [D] [thread 12174] Set default entry for table 'ipv4_lpm': NoAction - 
+[08:06:25.690] [bmv2] [D] [thread 12174] Set default entry for table 'tbl_add_mri_option': add_mri_option - 
+[08:06:25.690] [bmv2] [D] [thread 12174] Set default entry for table 'swid': NoAction - 
+[08:06:25.690] [bmv2] [D] [thread 12174] Set default entry for table 'tbl_remove_swid': remove_swid - 
+Adding interface s2-eth1 as port 1
+[08:06:25.691] [bmv2] [D] [thread 12174] Adding interface s2-eth1 as port 1
+Adding interface s2-eth2 as port 2
+[08:06:25.692] [bmv2] [D] [thread 12174] Adding interface s2-eth2 as port 2
+Adding interface s2-eth3 as port 3
+[08:06:25.693] [bmv2] [D] [thread 12174] Adding interface s2-eth3 as port 3
+Thrift server was started
+[08:06:28.895] [bmv2] [T] [thread 12238] bm_get_config
+[08:06:28.900] [bmv2] [T] [thread 12238] bm_set_default_action
+[08:06:28.900] [bmv2] [D] [thread 12238] Set default entry for table 'ipv4_lpm': drop - 
+[08:06:28.901] [bmv2] [T] [thread 12238] bm_set_default_action
+[08:06:28.902] [bmv2] [D] [thread 12238] Set default entry for table 'swid': add_swid - 2,
+[08:06:28.903] [bmv2] [T] [thread 12238] bm_table_add_entry
+[08:06:28.903] [bmv2] [D] [thread 12238] Entry 0 added to table 'ipv4_lpm'
+[08:06:28.903] [bmv2] [D] [thread 12238] Dumping entry 0
+Match key:
+* ipv4.dstAddr        : LPM       0a00020a/32
+Action entry: ipv4_forward - 400000002,1,
+
+[08:06:28.906] [bmv2] [T] [thread 12238] bm_table_add_entry
+[08:06:28.906] [bmv2] [D] [thread 12238] Entry 1 added to table 'ipv4_lpm'
+[08:06:28.906] [bmv2] [D] [thread 12238] Dumping entry 1
+Match key:
+* ipv4.dstAddr        : LPM       0a00010a/32
+Action entry: ipv4_forward - 22a80441abd3,2,
+
+[08:06:28.908] [bmv2] [T] [thread 12238] bm_table_add_entry
+[08:06:28.908] [bmv2] [D] [thread 12238] Entry 2 added to table 'ipv4_lpm'
+[08:06:28.908] [bmv2] [D] [thread 12238] Dumping entry 2
+Match key:
+* ipv4.dstAddr        : LPM       0a00030a/32
+Action entry: ipv4_forward - 22a80441abd4,3,
+
+open: No such file or directory
+open: No such file or directory
+open: No such file or directory
