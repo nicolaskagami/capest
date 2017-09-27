@@ -51,28 +51,53 @@ int main(int argc, char **argv)
         exit(0);
     }
 
+    float max_cap = 0;
+    float estimated_cap = 0;
+    uint32_t last_s1_et =0;
+    uint32_t last_s2_it=0;
+    uint16_t last_length=0;
+
+    uint32_t current_s1_et=0;
+    uint32_t current_s2_it=0;
     clientlen = sizeof(clientaddr);
     while (1) 
     {
         bzero(buf, BUFSIZE);
         n = recvfrom(sockfd, buf, BUFSIZE, 0,(struct sockaddr *) &clientaddr, &clientlen);
 
-        uint16_t * caps_number = buf;
-        uint32_t * swid;
-        uint32_t * it;
-        uint32_t * et;
-        printf("IP Length: %u\n",ntohs(caps_number[0]));
-        printf("INT capsules: %u\n",ntohs(caps_number[2]));
+        uint16_t caps_number = ntohs(*((uint16_t*)&(buf[2])));
+        uint16_t ip_length = ntohs(*((uint16_t* )buf));
+        uint32_t swid;
+        uint32_t it;
+        uint32_t et;
+        printf("IP Length: %u\n",ip_length);
+        printf("INT capsules: %u\n",caps_number);
         int i;
         char * buf_aux = buf + 4;
-
-        for(i=0;i<ntohs(caps_number[2]);i++)
+        for(i=0;i<caps_number;i++)
         {
-            swid = buf_aux; 
-            it = buf_aux + 4;
-            et = buf_aux + 8;
-            printf("Swid: %d, Ingress Time: %u, Enqueue Time: %u\n",ntohl(swid[0]),ntohl(it[0]),ntohl(et[0]));
+            swid = ntohl(*(uint32_t *)buf_aux); 
+            it = ntohl(*(uint32_t *)&(buf_aux[4]));
+            et = ntohl(*(uint32_t *)&(buf_aux[8]));
+            printf("Swid: %d, Ingress Time: %u, Enqueue Time: %u\n",swid,it,et);
             buf_aux+=12;
+            if(swid == 1)
+                current_s1_et = et;
+            if(swid == 2)
+                current_s2_it = it;
+        }
+
+        if(caps_number>1)
+        {
+            float delta_S1_et = (float) (current_s1_et - last_s1_et);   
+            float delta_S2_it = (float) (current_s2_it - last_s2_it);   
+            printf("ET dispersion estimate: %f Kbps\n",(float)(8000*last_length)/delta_S1_et);
+            printf("IT dispersion estimate: %f Kbps\n",(float)(8000*last_length)/delta_S2_it);
+            printf("ET dispersion: %f ms\n",(float)delta_S1_et/(1000));
+            printf("IT dispersion: %f ms\n",(float)delta_S2_it/(1000));
+            last_length = ip_length;
+            last_s1_et = current_s1_et;
+            last_s2_it = current_s2_it;
         }
     }
 }

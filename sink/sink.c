@@ -1,6 +1,3 @@
-/*
-    Packet sniffer using libpcap library
-*/
 #include<pcap.h>
 #include<stdio.h>
 #include<stdlib.h> // for exit()
@@ -20,7 +17,6 @@
 #include<netinet/tcp.h>   //Provides declarations for tcp header
 #include<netinet/ip.h>    //Provides declarations for ip header
 
-#define INTERFACE_NAME "s1-eth1"
 #define BUFFER_SIZE 512
  
 void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
@@ -101,12 +97,15 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
     if(iphdrlen>22)
     {
         memcpy(send_buffer,&(iph->tot_len),2);
-        memcpy(send_buffer+2,buffer+36,iphdrlen-22);
+        memcpy(&(send_buffer[2]),buffer+36,iphdrlen-22);
+        printf("Sending %d\n",iphdrlen-20);
+        printf("%d\n",iphdrlen-20);
         n = sendto(sockfd, send_buffer,iphdrlen-20, 0, (struct sockaddr *)&serveraddr, serverlen);
     }
 
-    //PrintData(buffer+36,iphdrlen);
-    //fflush(stdout);
+    PrintData(buffer+36,iphdrlen-22);
+    PrintData(send_buffer,iphdrlen-20);
+    fflush(stdout);
 }
  
 void print_ethernet_header(const u_char *Buffer, int Size)
