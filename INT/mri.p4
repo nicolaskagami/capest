@@ -3,7 +3,9 @@
 #include <v1model.p4>
 
 const bit<8>  UDP_PROTOCOL = 0x11;
-const bit<16> TYPE_IPV4 = 0x800;
+const bit<16> ETH_TYPE_IPV4 = 0x800;
+const bit<16> ETH_TYPE_NSH = 0x900;
+const bit<8> NSH_TYPE_IPV4 = 0x02;
 const bit<5>  IPV4_OPTION_MRI = 31;
 
 #define MAX_HOPS 9
@@ -18,6 +20,26 @@ typedef bit<32> ip4Addr_t;
 typedef bit<32> switchID_t;
 typedef bit<32> ingress_timestamp_t;
 typedef bit<32> egress_timestamp_t;
+
+header nsh_t {
+    bit<2> version;
+    bit<1> oam;
+    bit<1> zero;
+    bit<6> ttl;
+    bit<6> nsh_length;
+    bit<4> unassigned;
+    bit<4> metadata_type;
+    bit<8> next_protocol;
+    bit<24> service_path_id;
+    bit<8> service_index;
+}
+
+header nsh_variable_context_t {
+    bit<16> metadata_class;
+    bit<8> metadata_type;
+    bit<1> unassigned;
+    bit<7> metadata_length;
+}
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -48,7 +70,7 @@ header ipv4_option_t {
 }
 
 header mri_t {
-    bit<16>  count;
+    bit<32>  count;
 }
 
 header switch_t {
@@ -62,11 +84,11 @@ header INT_capsule {
 }
 
 struct ingress_metadata_t {
-    bit<16>  count;
+    bit<32>  count;
 }
 
 struct parser_metadata_t {
-    bit<16>  remaining;
+    bit<32>  remaining;
 }
 
 struct metadata {
@@ -76,13 +98,16 @@ struct metadata {
 
 struct headers {
     ethernet_t   ethernet;
-    ipv4_t       ipv4;
-    ipv4_option_t  ipv4_option;
+    nsh_t nsh;
+    nsh_variable_context_t nsh_context;
     mri_t        mri;
     INT_capsule[MAX_HOPS] caps;
+    ipv4_t       ipv4;
+    ipv4_option_t  ipv4_option;
 }
 
 error { IPHeaderTooShort }
+error { NSHeaderTooShort }
 
 /*************************************************************************
 *********************** P A R S E R  ***********************************
@@ -100,9 +125,31 @@ inout standard_metadata_t standard_metadata) {
     state parse_ethernet {
         packet.extract(hdr.ethernet);
         transition select(hdr.ethernet.etherType) {
-            TYPE_IPV4: parse_ipv4;
+            ETH_TYPE_IPV4: parse_ipv4;
+            ETH_TYPE_NSH: parse_nsh;
             default: accept;
         }
+    }
+
+    state parse_nsh {
+        packet.extract(hdr.nsh);
+        verify(hdr.nsh.nsh_length >= 2, error.NSHeaderTooShort);
+        transition select(hdr.nsh.nsh_length) {
+            2             : parse_nsh_next_protocol;
+            default       : parse_nsh_context;
+        }
+    }
+
+    state parse_nsh_next_protocol {
+        transition select(hdr.nsh.next_protocol) {
+            NSH_TYPE_IPV4: parse_ipv4;
+            default: accept;
+        }
+    }
+
+    state parse_nsh_context {
+        packet.extract(hdr.nsh_context);
+        transition parse_mri;
     }
 
     state parse_ipv4 {
@@ -126,7 +173,7 @@ inout standard_metadata_t standard_metadata) {
         packet.extract(hdr.mri);
         meta.parser_metadata.remaining = hdr.mri.count;
         transition select(meta.parser_metadata.remaining) {
-            0 : accept;
+            0 : parse_ipv4;
             default: parse_swid;
         }
     }
@@ -135,7 +182,7 @@ inout standard_metadata_t standard_metadata) {
         packet.extract(hdr.caps.next);
         meta.parser_metadata.remaining = meta.parser_metadata.remaining  - 1;
         transition select(meta.parser_metadata.remaining) {
-            0 : accept;
+            0 : parse_ipv4;
             default: parse_swid;
         }
     }    
@@ -191,16 +238,34 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     
     action add_mri_option() {
-        hdr.ipv4_option.setValid();
-        hdr.ipv4_option.copyFlag     = 1;
-        hdr.ipv4_option.optClass     = 2;  /* Debugging and Measurement */
-        hdr.ipv4_option.option       = IPV4_OPTION_MRI;
-        hdr.ipv4_option.optionLength = 4;  /* sizeof(ipv4_option) + sizeof(mri) */
+        hdr.ipv4_option.setInvalid();
+        hdr.ipv4.setValid();
+        //hdr.ipv4_option.copyFlag     = 1;
+        //hdr.ipv4_option.optClass     = 2;  /* Debugging and Measurement */
+        //hdr.ipv4_option.option       = IPV4_OPTION_MRI;
+        //hdr.ipv4_option.optionLength = 4;  /* sizeof(ipv4_option) + sizeof(mri) */
+        hdr.ethernet.etherType = ETH_TYPE_NSH;
         
+        hdr.nsh.setValid();
+        hdr.nsh.version = 0;
+        hdr.nsh.oam = 0;
+        hdr.nsh.zero = 0;
+        hdr.nsh.ttl = (bit<6>) 0x10;
+        hdr.nsh.nsh_length = (bit<6>) 0x4;
+        hdr.nsh.unassigned = 0;
+        hdr.nsh.metadata_type = (bit<4>) 0x2;
+        hdr.nsh.next_protocol = NSH_TYPE_IPV4; 
+        hdr.nsh.service_path_id = (bit<24>) 0x0;
+        hdr.nsh.service_index = 0;
+
+        hdr.nsh_context.setValid();
+        hdr.nsh_context.metadata_class = 0xfff6;
+        hdr.nsh_context.metadata_type = 0;
+        hdr.nsh_context.unassigned = 0;
+        hdr.nsh_context.metadata_length = 4;
+
         hdr.mri.setValid();
         hdr.mri.count = 0;
-        hdr.ipv4.ihl = hdr.ipv4.ihl + 1;
-        hdr.ipv4.totalLen = hdr.ipv4.totalLen + 4;
     }
     
     action add_swid(switchID_t id) {    
@@ -212,21 +277,25 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         //hdr.caps[0].it = (bit<32>) standard_metadata.ingress_port;
         //hdr.caps[0].et = (bit<32>) standard_metadata.egress_port;
 
-        hdr.ipv4.ihl = hdr.ipv4.ihl + 3;
-        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 12;    
-        hdr.ipv4.totalLen = hdr.ipv4.totalLen + 12;
+        hdr.nsh.nsh_length = hdr.nsh.nsh_length + 3;
+        hdr.nsh_context.metadata_length = hdr.nsh_context.metadata_length + 12;
+        //hdr.ipv4.ihl = hdr.ipv4.ihl + 3;
+        //hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 12;    
+        //hdr.ipv4.totalLen = hdr.ipv4.totalLen + 12;
     }
     action remove_swid(){
-        hdr.ipv4_option.setInvalid(); 
+        hdr.nsh.setInvalid(); 
+        hdr.nsh_context.setInvalid(); 
         hdr.mri.setInvalid(); 
+        hdr.ethernet.etherType = ETH_TYPE_IPV4;
         //hdr.caps.setInvalid(); 
         hdr.caps.pop_front(hdr.mri.count);
-        hdr.ipv4.ihl = hdr.ipv4.ihl - (bit<4>) (3*hdr.mri.count);
-        hdr.ipv4.ihl = hdr.ipv4.ihl - 1;
-        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength - (bit<8>) (12*hdr.mri.count);    
-        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength - 4;    
-        hdr.ipv4.totalLen = hdr.ipv4.totalLen - 12*hdr.mri.count;
-        hdr.ipv4.totalLen = hdr.ipv4.totalLen - 4;
+        //hdr.ipv4.ihl = hdr.ipv4.ihl - (bit<4>) (3*hdr.mri.count);
+        //hdr.ipv4.ihl = hdr.ipv4.ihl - 1;
+        //hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength - (bit<8>) (12*hdr.mri.count);    
+        //hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength - 4;    
+        //hdr.ipv4.totalLen = hdr.ipv4.totalLen - 12*hdr.mri.count;
+        //hdr.ipv4.totalLen = hdr.ipv4.totalLen - 4;
     }
     
 
@@ -278,8 +347,7 @@ inout metadata meta)
                 hdr.ipv4.protocol,
                 hdr.ipv4.srcAddr,
                 hdr.ipv4.dstAddr,
-                hdr.ipv4_option,
-                hdr.mri
+                hdr.ipv4_option
             });
         }
     }
@@ -292,10 +360,12 @@ inout metadata meta)
 control DeparserImpl(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
-        packet.emit(hdr.ipv4);
-        packet.emit(hdr.ipv4_option);
+        packet.emit(hdr.nsh);
+        packet.emit(hdr.nsh_context);
         packet.emit(hdr.mri);
         packet.emit(hdr.caps);                 
+        packet.emit(hdr.ipv4);
+        packet.emit(hdr.ipv4_option);
     }
 }
 
