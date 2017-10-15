@@ -18,9 +18,17 @@
 #include<netinet/ip.h>    //Provides declarations for ip header
 
 #define BUFFER_SIZE 512
+
+struct nsh 
+{
+   unsigned short int ttl_msb:4,version:2,oam:1,zero:1,length:6,ttl_lsb:2;
+   unsigned short int unassigned:4,metadata_type:4,next_protocol:8;
+   unsigned int service_path_id:24;
+   unsigned char service_index;
+};
  
 void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
-void process_ip_packet(const u_char * , int);
+void print_nsh_packet(u_char *, int);
 void print_ip_packet(const u_char * , int);
 void print_tcp_packet(const u_char *  , int );
 void print_udp_packet(const u_char * , int);
@@ -42,8 +50,7 @@ char send_buffer[512];
  
 int main(int argc, char ** argv)
 {
-    /* check command line arguments */
-    if (argc != 4) 
+    if (argc != 4)
     {
        fprintf(stderr,"usage: %s <interface> <hostname> <port>\n", argv[0]);
        exit(0);
@@ -87,27 +94,37 @@ int main(int argc, char ** argv)
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *buffer)
 {
     int size = header->len;
-    struct iphdr *iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
+    struct nsh * nsheader = (struct nsh*)((buffer + sizeof(struct ethhdr)));
+    unsigned int nsh_length = 4*(nsheader->length);
+    unsigned int nsh_ttl = (nsheader->ttl_msb*4)+nsheader->ttl_lsb;
+    struct iphdr *iph = (struct iphdr*)(buffer + sizeof(struct ethhdr) + nsh_length);
 
     logfile = stdout;
-    unsigned short iphdrlen =iph->ihl*4;
+    unsigned short ip_total_length =iph->tot_len;
+    u_char * nsh_int = (u_char *) nsheader + 12;
+    unsigned int send_amount = nsh_length-12;
 
     //Send MSG
     serverlen = sizeof(serveraddr);
-    if(iphdrlen>22)
+    if(send_amount>0)
     {
         memcpy(send_buffer,&(iph->tot_len),2);
-        memcpy(&(send_buffer[2]),buffer+36,iphdrlen-22);
-        printf("Sending %d\n",iphdrlen-20);
-        printf("%d\n",iphdrlen-20);
-        n = sendto(sockfd, send_buffer,iphdrlen-20, 0, (struct sockaddr *)&serveraddr, serverlen);
+        memcpy(&(send_buffer[2]),nsh_int,send_amount);
+        //printf("NSH Length: %u\n",nsh_length);
+        //printf("NSH TTL: %u\n",nsh_ttl);
+        //printf("IP Length: %u\n\n",ntohs(ip_total_length));
+        n = sendto(sockfd, send_buffer,send_amount, 0, (struct sockaddr *)&serveraddr, serverlen);
     }
 
-    PrintData(buffer+36,iphdrlen-22);
-    PrintData(send_buffer,iphdrlen-20);
+    //PrintData(buffer+36,iphdrlen-22);
+    //PrintData(send_buffer,iphdrlen-20);
     fflush(stdout);
 }
  
+void print_nsh_packet(u_char * buffer, int size)
+{
+    struct nsh * nsheader = (struct nsh*)(buffer);
+}
 void print_ethernet_header(const u_char *Buffer, int Size)
 {
     struct ethhdr *eth = (struct ethhdr *)Buffer;

@@ -65,7 +65,7 @@ int main(int argc, char **argv)
         bzero(buf, BUFSIZE);
         n = recvfrom(sockfd, buf, BUFSIZE, 0,(struct sockaddr *) &clientaddr, &clientlen);
 
-        uint16_t caps_number = ntohs(*((uint16_t*)&(buf[2])));
+        uint32_t caps_number = ntohl(*((uint32_t*)&(buf[2])));
         uint16_t ip_length = ntohs(*((uint16_t* )buf));
         uint32_t swid;
         uint32_t it;
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
         printf("IP Length: %u\n",ip_length);
         printf("INT capsules: %u\n",caps_number);
         int i;
-        char * buf_aux = buf + 4;
+        char * buf_aux = buf + 6;
         for(i=0;i<caps_number;i++)
         {
             swid = ntohl(*(uint32_t *)buf_aux); 

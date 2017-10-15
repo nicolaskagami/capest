@@ -272,10 +272,10 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         hdr.mri.count = hdr.mri.count + 1;
         hdr.caps.push_front(1);
         hdr.caps[0].swid = id;
-        hdr.caps[0].it = (bit<32>) standard_metadata.ingress_global_timestamp;
-        hdr.caps[0].et = (bit<32>) standard_metadata.enq_timestamp + standard_metadata.deq_timedelta;
-        //hdr.caps[0].it = (bit<32>) standard_metadata.ingress_port;
-        //hdr.caps[0].et = (bit<32>) standard_metadata.egress_port;
+        //hdr.caps[0].it = (bit<32>) standard_metadata.ingress_global_timestamp;
+        //hdr.caps[0].et = (bit<32>) standard_metadata.enq_timestamp + standard_metadata.deq_timedelta;
+        hdr.caps[0].it = (bit<32>) standard_metadata.enq_qdepth;
+        hdr.caps[0].et = (bit<32>) standard_metadata.deq_qdepth;
 
         hdr.nsh.nsh_length = hdr.nsh.nsh_length + 3;
         hdr.nsh_context.metadata_length = hdr.nsh_context.metadata_length + 12;
