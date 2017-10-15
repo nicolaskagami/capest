@@ -193,7 +193,7 @@ inout standard_metadata_t standard_metadata) {
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control verifyChecksum(in headers hdr, inout metadata meta) {   
+control verifyChecksum(inout headers hdr, inout metadata meta) {   
     apply {  }
 }
 
@@ -330,11 +330,8 @@ control computeChecksum(
 inout headers  hdr,
 inout metadata meta)
 {
-    Checksum16() ipv4_checksum;
-    
     apply {
-        if (hdr.ipv4.isValid()) {
-            hdr.ipv4.hdrChecksum = ipv4_checksum.get(
+        update_checksum(hdr.ipv4.isValid(),
             {    
                 hdr.ipv4.version,
                 hdr.ipv4.ihl,
@@ -348,8 +345,8 @@ inout metadata meta)
                 hdr.ipv4.srcAddr,
                 hdr.ipv4.dstAddr,
                 hdr.ipv4_option
-            });
-        }
+            }, hdr.ipv4.hdrChecksum,
+            HashAlgorithm.csum16);
     }
 }
 
