@@ -10,6 +10,16 @@
 
 #define BUFSIZE 1024
 
+uint32_t last_s1_et =0;
+uint32_t last_s1_it =0;
+uint32_t last_s2_it=0;
+uint32_t last_s2_et=0;
+uint32_t last_length = 0;
+float last_estimates[100];
+uint32_t estimate_iterator = 0;
+
+void submit(uint32_t ip_length, uint32_t swid_source, uint32_t swid_target, uint32_t source_in_timestamp, uint32_t target_in_timestamp);
+
 int main(int argc, char **argv) 
 {
     int sockfd; /* socket */
@@ -53,12 +63,12 @@ int main(int argc, char **argv)
 
     float max_cap = 0;
     float estimated_cap = 0;
-    uint32_t last_s1_et =0;
-    uint32_t last_s2_it=0;
     uint16_t last_length=0;
 
     uint32_t current_s1_et=0;
+    uint32_t current_s1_it=0;
     uint32_t current_s2_it=0;
+    uint32_t current_s2_et=0;
     clientlen = sizeof(clientaddr);
     while (1) 
     {
@@ -70,8 +80,8 @@ int main(int argc, char **argv)
         uint32_t swid;
         uint32_t it;
         uint32_t et;
-        printf("IP Length: %u\n",ip_length);
-        printf("INT capsules: %u\n",caps_number);
+  //      printf("IP Length: %u\n",ip_length);
+  //      printf("INT capsules: %u\n",caps_number);
         int i;
         char * buf_aux = buf + 6;
         for(i=0;i<caps_number;i++)
@@ -79,25 +89,40 @@ int main(int argc, char **argv)
             swid = ntohl(*(uint32_t *)buf_aux); 
             it = ntohl(*(uint32_t *)&(buf_aux[4]));
             et = ntohl(*(uint32_t *)&(buf_aux[8]));
-            printf("Swid: %d, Ingress Time: %u, Enqueue Time: %u\n",swid,it,et);
+            //printf("Swid: %d, Ingress Time: %u, Enqueue Time: %u\n",swid,it,et);
             buf_aux+=12;
             if(swid == 1)
-                current_s1_et = et;
+                current_s1_it = it;
             if(swid == 2)
                 current_s2_it = it;
-        }
+         }
 
         if(caps_number>1)
-        {
-            float delta_S1_et = (float) (current_s1_et - last_s1_et);   
-            float delta_S2_it = (float) (current_s2_it - last_s2_it);   
-            printf("ET dispersion estimate: %f Kbps\n",(float)(8000*last_length)/delta_S1_et);
-            printf("IT dispersion estimate: %f Kbps\n",(float)(8000*last_length)/delta_S2_it);
-            printf("ET dispersion: %f ms\n",(float)delta_S1_et/(1000));
-            printf("IT dispersion: %f ms\n",(float)delta_S2_it/(1000));
-            last_length = ip_length;
-            last_s1_et = current_s1_et;
-            last_s2_it = current_s2_it;
-        }
-    }
+            submit(ip_length,1,2,current_s1_it,current_s2_it);
+     }
+}
+
+void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint32_t source_in_timestamp, uint32_t target_in_timestamp)
+{  
+    float delta_S1_it = (float) (source_in_timestamp- last_s1_it);   
+    float delta_S2_it = (float) (target_in_timestamp- last_s2_it);   
+    float estimate = (8000*last_length)/delta_S2_it;
+    last_estimates[estimate_iterator++%100] = estimate;
+    float average,sum;
+    sum = 0;
+    uint32_t i,limit;
+    limit = (estimate_iterator>100) ? 100 : estimate_iterator;
+    for(i=0;i<limit;i++)
+        sum+=last_estimates[i];
+    average = sum/limit;
+
+    printf("SRC IT dispersion estimate: %f Kbps\n",(float)(8000*last_length)/delta_S1_it);
+    printf("TGT IT dispersion estimate: %f Kbps\n",estimate);
+    printf("Average dispersion estimate (%u): %f Kbps\n",limit,average);
+
+    printf("SRC IT dispersion: %f ms\n",(float)delta_S1_it/(1000));
+    printf("TGT IT dispersion: %f ms\n",(float)delta_S2_it/(1000));
+    last_length = ip_length;
+    last_s1_it = source_in_timestamp;
+    last_s2_it = target_in_timestamp;
 }

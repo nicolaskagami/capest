@@ -108,6 +108,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
     serverlen = sizeof(serveraddr);
     if(send_amount>0)
     {
+        send_amount+=2;
         memcpy(send_buffer,&(iph->tot_len),2);
         memcpy(&(send_buffer[2]),nsh_int,send_amount);
         //printf("NSH Length: %u\n",nsh_length);
@@ -117,7 +118,8 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
     }
 
     //PrintData(buffer+36,iphdrlen-22);
-    //PrintData(send_buffer,iphdrlen-20);
+    //PrintData(send_buffer+2,send_amount);
+    //printf("\n");
     fflush(stdout);
 }
  
