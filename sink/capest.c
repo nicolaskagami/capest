@@ -16,6 +16,7 @@ uint32_t last_s1_it =0;
 uint32_t last_s2_it=0;
 uint32_t last_s2_et=0;
 uint32_t last_length = 0;
+uint32_t second_to_last_length = 0;
 float last_estimates[ESTIMATE_SAMPLE_AMOUNT];
 float ordered_estimates[ESTIMATE_SAMPLE_AMOUNT];
 uint32_t estimate_iterator = 0;
@@ -71,6 +72,7 @@ int main(int argc, char **argv)
     float max_cap = 0;
     float estimated_cap = 0;
     uint16_t last_length=0;
+    uint16_t second_to_last_length=0;
 
     uint32_t current_s1_et=0;
     uint32_t current_s1_it=0;
@@ -117,7 +119,7 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
     //{
     //    return;
     //}
-    float estimate = (8000*last_length)/delta_S2_it;
+    float estimate = (8000*(second_to_last_length+last_length))/delta_S2_it;
     last_estimates[estimate_iterator++%ESTIMATE_SAMPLE_AMOUNT] = estimate;
     float average,sum;
     sum = 0;
@@ -133,9 +135,9 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
 
     uint32_t highest_count = 0;
     uint32_t highest_avg = 0;
-    if(limit< 100)
+    if(limit< 1000)
         return;
-    for(i=50;i<limit-50;i++)
+    for(i=50;i<limit-50;i+=50)
     {
         int j;
         int count =0;
@@ -143,8 +145,11 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
         for(j=-50;j<50;j++)
         {
             if((ordered_estimates[i+j]>(0.9*median))&&(ordered_estimates[i+j]<(1.1*median)))
+            {
                 count++;
+            }
         }
+        printf("%d: %d \n",median,count);
         if(count>highest_count)
         {
             highest_count = count;
@@ -154,12 +159,13 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
     average = highest_avg;
 
     printf("Count: %d\n",highest_count);
-    printf("SRC IT dispersion estimate: %f Kbps\n",(float)(8000*last_length)/delta_S1_it);
+    printf("SRC IT dispersion estimate: %f Kbps\n",(float)(8000*(second_to_last_length+last_length))/delta_S1_it);
     printf("TGT IT dispersion estimate: %f Kbps\n",estimate);
     printf("Average dispersion estimate (%u): %f Kbps\n",limit,average);
 
     //printf("SRC IT dispersion: %f ms\n",(float)delta_S1_it/(1000));
     //printf("TGT IT dispersion: %f ms\n",(float)delta_S2_it/(1000));
+    second_to_last_length = last_length;
     last_length = ip_length;
     last_s1_it = source_in_timestamp;
     last_s2_it = target_in_timestamp;
