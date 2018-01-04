@@ -119,38 +119,44 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
     //{
     //    return;
     //}
-    float estimate = (8000*(second_to_last_length+last_length))/delta_S2_it;
+    float estimate = (float) (8000*(second_to_last_length+last_length))/delta_S2_it;
     last_estimates[estimate_iterator++%ESTIMATE_SAMPLE_AMOUNT] = estimate;
     float average,sum;
     sum = 0;
     uint32_t i,limit;
     limit = (estimate_iterator>ESTIMATE_SAMPLE_AMOUNT) ? ESTIMATE_SAMPLE_AMOUNT : estimate_iterator;
-    for(i=0;i<limit;i++)
-        sum+=last_estimates[i];
-    average = sum/limit;
+    //for(i=0;i<limit;i++)
+    //    sum+=last_estimates[i];
+    //average = sum/limit;
     for(i=0;i<limit;i++)
         ordered_estimates[i] = last_estimates[i];
     qsort(ordered_estimates,limit,sizeof(uint32_t),compare);
-    average = ordered_estimates[(uint32_t)(limit/2)];
+    //average = ordered_estimates[(uint32_t)(limit/2)];
 
     uint32_t highest_count = 0;
     uint32_t highest_avg = 0;
     if(limit< 1000)
         return;
-    for(i=50;i<limit-50;i+=50)
-    {
+    int quartile = limit/4;
+    float bin_radius = (ordered_estimates[3*quartile]-ordered_estimates[quartile])/15;
+    int step=limit/4;
+    for(i=step;i<(limit-step);i+=step/10)
+    { 
         int j;
         int count =0;
-        uint32_t median = ordered_estimates[i];
-        for(j=-50;j<50;j++)
+        float median = ordered_estimates[i];
+        if(median == 0)
+            continue;
+        for(j=-step;j<step;j++)
         {
-            if((ordered_estimates[i+j]>(0.9*median))&&(ordered_estimates[i+j]<(1.1*median)))
+            //1printf("Median: %d, %d\n",median,ordered_estimates[i+j]);
+            if((ordered_estimates[i+j]>(median-bin_radius))&&(ordered_estimates[i+j]<(median+bin_radius)))
             {
                 count++;
             }
         }
-        printf("%d: %d \n",median,count);
-        if(count>highest_count)
+        printf("%f: %d \n",median,count);
+        if(count>=highest_count)
         {
             highest_count = count;
             highest_avg = median; 
@@ -159,6 +165,8 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
     average = highest_avg;
 
     printf("Count: %d\n",highest_count);
+    printf("Step: %d\n",step);
+    printf("Bin Radius: %f\n",bin_radius);
     printf("SRC IT dispersion estimate: %f Kbps\n",(float)(8000*(second_to_last_length+last_length))/delta_S1_it);
     printf("TGT IT dispersion estimate: %f Kbps\n",estimate);
     printf("Average dispersion estimate (%u): %f Kbps\n",limit,average);
