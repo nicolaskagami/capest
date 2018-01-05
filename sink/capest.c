@@ -138,8 +138,8 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
     if(limit< 1000)
         return;
     int quartile = limit/4;
-    float bin_radius = (ordered_estimates[3*quartile]-ordered_estimates[quartile])/15;
-    int step=limit/4;
+    float bin_radius = (ordered_estimates[2*quartile]-ordered_estimates[quartile])/10;
+    int step=limit/25;
     for(i=step;i<(limit-step);i+=step/10)
     { 
         int j;
@@ -147,10 +147,11 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
         float median = ordered_estimates[i];
         if(median == 0)
             continue;
-        for(j=-step;j<step;j++)
+        //for(j=-step;j<step;j++)
+        for(j=0;j<limit;j++)
         {
             //1printf("Median: %d, %d\n",median,ordered_estimates[i+j]);
-            if((ordered_estimates[i+j]>(median-bin_radius))&&(ordered_estimates[i+j]<(median+bin_radius)))
+            if((ordered_estimates[j]>(median-bin_radius))&&(ordered_estimates[j]<(median+bin_radius)))
             {
                 count++;
             }
