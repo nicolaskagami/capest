@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 
 #define BUFSIZE 1024
-#define ESTIMATE_SAMPLE_AMOUNT 20480
+#define ESTIMATE_SAMPLE_AMOUNT 40960
 
 uint32_t last_s1_et =0;
 uint32_t last_s1_it =0;
@@ -19,8 +19,19 @@ uint32_t last_length = 0;
 uint32_t second_to_last_length = 0;
 float last_estimates[ESTIMATE_SAMPLE_AMOUNT];
 float ordered_estimates[ESTIMATE_SAMPLE_AMOUNT];
+float bin_radius =0;
 uint32_t estimate_iterator = 0;
 uint32_t notfirst = 0;
+
+
+//Autocorrelation
+#include<math.h>
+//Seconds per Gigabit
+#define AUTOC_SAMPLE_AMOUNT 4096
+#define AUTOC_MAXIMUM_ESTIMATE 1024000
+uint32_t autoc_reverse_estimates[AUTOC_SAMPLE_AMOUNT];
+void calculate_autoc();
+
 
 void submit(uint32_t ip_length, uint32_t swid_source, uint32_t swid_target, uint32_t source_in_timestamp, uint32_t target_in_timestamp);
 int compare (const void * a, const void * b)
@@ -115,11 +126,14 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
 {  
     float delta_S1_it = (float) (source_in_timestamp- last_s1_it);   
     float delta_S2_it = (float) (target_in_timestamp- last_s2_it);   
+    if(delta_S2_it<(bin_radius/10))//10 units per bin radius
+        return;
     //if(last_s1_it && (delta_S1_it>delta_S2_it))
     //{
     //    return;
     //}
-    float estimate = (float) (8000*(second_to_last_length+last_length))/delta_S2_it;
+    //float estimate = (float) (8000*(second_to_last_length+last_length))/delta_S2_it;
+    float estimate = (float) (8000*(last_length))/delta_S2_it;
     last_estimates[estimate_iterator++%ESTIMATE_SAMPLE_AMOUNT] = estimate;
     float average,sum;
     sum = 0;
@@ -133,25 +147,38 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
     qsort(ordered_estimates,limit,sizeof(uint32_t),compare);
     //average = ordered_estimates[(uint32_t)(limit/2)];
 
-    uint32_t highest_count = 0;
-    uint32_t highest_avg = 0;
+ //   if(estimate > 1000000)
+  //  {
+  //      printf("Estimate: %f Delta: %f Length %d\n",estimate,delta_S2_it,(second_to_last_length+last_length));
+  //  }
+    second_to_last_length = last_length;
+    last_length = ip_length;
+    last_s1_it = source_in_timestamp;
+    last_s2_it = target_in_timestamp;
+
     if(limit< 1000)
         return;
+
+    uint32_t highest_count = 0;
+    uint32_t highest_avg = 0;
     int quartile = limit/4;
-    float bin_radius = (ordered_estimates[2*quartile]-ordered_estimates[quartile])/10;
     int step=limit/25;
-    for(i=step;i<(limit-step);i+=step/10)
+    bin_radius = (ordered_estimates[2*quartile]-ordered_estimates[quartile])/10;
+
+    if(limit%100)
+        return;
+    for(i=0;i<(limit-step);i+=step/10)
     { 
         int j;
         int count =0;
         float median = ordered_estimates[i];
-        if(median == 0)
-            continue;
+        //if(median == 0)
+        //    continue;
         //for(j=-step;j<step;j++)
         for(j=0;j<limit;j++)
         {
             //1printf("Median: %d, %d\n",median,ordered_estimates[i+j]);
-            if((ordered_estimates[j]>(median-bin_radius))&&(ordered_estimates[j]<(median+bin_radius)))
+            if((ordered_estimates[j] >= (median-bin_radius))&&(ordered_estimates[j]<(median+bin_radius)))
             {
                 count++;
             }
@@ -163,19 +190,61 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
             highest_avg = median; 
         }
     }
+    
+    for(i=0;i<AUTOC_SAMPLE_AMOUNT;i++)
+    {
+        float autoc_min_estimate = (float)(AUTOC_MAXIMUM_ESTIMATE/(i+2));
+        float autoc_max_estimate = (float)(AUTOC_MAXIMUM_ESTIMATE/(i+1));
+        //printf("between (%f,%f)\n",autoc_min_estimate,autoc_max_estimate); getchar();
+        int j;
+        for(j=0;j<limit;j++)
+        {
+            if((ordered_estimates[j] >= autoc_min_estimate) && (ordered_estimates[j]) < autoc_max_estimate)
+                autoc_reverse_estimates[i]++;
+        }
+    }
+	calculate_autoc();
     average = highest_avg;
+    printf("Bin Radius: %f\n",bin_radius);
+    printf("Average dispersion estimate (%u): %f Kbps\n",limit,average);
 
+/*
     printf("Count: %d\n",highest_count);
     printf("Step: %d\n",step);
-    printf("Bin Radius: %f\n",bin_radius);
     printf("SRC IT dispersion estimate: %f Kbps\n",(float)(8000*(second_to_last_length+last_length))/delta_S1_it);
-    printf("TGT IT dispersion estimate: %f Kbps\n",estimate);
-    printf("Average dispersion estimate (%u): %f Kbps\n",limit,average);
+    printf("TGT IT dispersion estimate: %f Kbps\n",estimate);*/
 
     //printf("SRC IT dispersion: %f ms\n",(float)delta_S1_it/(1000));
     //printf("TGT IT dispersion: %f ms\n",(float)delta_S2_it/(1000));
-    second_to_last_length = last_length;
-    last_length = ip_length;
-    last_s1_it = source_in_timestamp;
-    last_s2_it = target_in_timestamp;
+}
+
+void calculate_autoc()
+{
+	double   autocv;      // Autocovariance value
+	double   ac_value;    // Computed autocorrelation value to be returned
+	double   mean;
+	double   var;
+	int      i,lag;           // Loop counter
+	int N = AUTOC_SAMPLE_AMOUNT;
+
+	mean = 0.0;
+	for (i=0; i<N; i++)
+		mean = mean + (autoc_reverse_estimates[i] / N);
+
+	var = 0.0;
+	for (i=0; i<N; i++)
+		var = var + (pow((autoc_reverse_estimates[i] - mean), 2.0) / N);
+
+    printf("Mean: %f \tVariance: %f\n",mean,var);
+	for(lag=0;lag<(N-1);lag++)
+	{
+		autocv = 0.0;
+		for (i=0; i<(N - lag); i++)
+			autocv = autocv + ((autoc_reverse_estimates[i] - mean) * (autoc_reverse_estimates[i+lag] - mean));
+		autocv = (1.0 / (N - lag)) * autocv;
+		ac_value = autocv / var;
+        if(ac_value>0.01)
+            printf("Lag:%f %f\n",(float)(AUTOC_MAXIMUM_ESTIMATE/(lag+1.5)),ac_value);
+	}
+
 }
