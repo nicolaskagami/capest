@@ -29,6 +29,7 @@ uint32_t notfirst = 0;
 //Seconds per Gigabit
 #define AUTOC_SAMPLE_AMOUNT 4096
 #define AUTOC_MAXIMUM_ESTIMATE 1024000
+double   ac_value[AUTOC_SAMPLE_AMOUNT];
 uint32_t autoc_reverse_estimates[AUTOC_SAMPLE_AMOUNT];
 void calculate_autoc();
 
@@ -156,40 +157,17 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
     last_s1_it = source_in_timestamp;
     last_s2_it = target_in_timestamp;
 
-    if(limit< 1000)
+    if(limit< 100)
         return;
 
-    uint32_t highest_count = 0;
+    float highest_count = 0;
     uint32_t highest_avg = 0;
     int quartile = limit/4;
     int step=limit/25;
-    bin_radius = (ordered_estimates[2*quartile]-ordered_estimates[quartile])/10;
+    bin_radius = (ordered_estimates[3*quartile]-ordered_estimates[quartile])/10;
 
     if(limit%100)
         return;
-    for(i=0;i<(limit-step);i+=step/10)
-    { 
-        int j;
-        int count =0;
-        float median = ordered_estimates[i];
-        //if(median == 0)
-        //    continue;
-        //for(j=-step;j<step;j++)
-        for(j=0;j<limit;j++)
-        {
-            //1printf("Median: %d, %d\n",median,ordered_estimates[i+j]);
-            if((ordered_estimates[j] >= (median-bin_radius))&&(ordered_estimates[j]<(median+bin_radius)))
-            {
-                count++;
-            }
-        }
-        printf("%f: %d \n",median,count);
-        if(count>=highest_count)
-        {
-            highest_count = count;
-            highest_avg = median; 
-        }
-    }
     
     for(i=0;i<AUTOC_SAMPLE_AMOUNT;i++)
     {
@@ -204,6 +182,32 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
         }
     }
 	calculate_autoc();
+    for(i=0;i<(limit-step);i+=step/10)
+    { 
+        int j;
+        float count =0;
+        float median = ordered_estimates[i];
+        if(median == 0)
+            continue;
+        for(j=0;j<limit;j++)
+            if((ordered_estimates[j] >= (median-bin_radius))&&(ordered_estimates[j]<(median+bin_radius)))
+                count++;
+
+        int index = (int) (AUTOC_MAXIMUM_ESTIMATE/median);
+        if(index >= AUTOC_SAMPLE_AMOUNT)
+            index = AUTOC_SAMPLE_AMOUNT -1;
+        else if (index < 0)
+            index = 0;
+        printf("%f: %f *[%d](%f) = %f \n",median,count,index,ac_value[index],count*ac_value[index]);
+        count*=ac_value[index];
+        //printf("%f: %d *[%d]\n",median,count,index);
+        if(count>=highest_count)
+        {
+            highest_count = count;
+            highest_avg = median; 
+        }
+    }
+        //    printf("Lag:%f %f\n",(float)(AUTOC_MAXIMUM_ESTIMATE/(lag+1.5)),ac_value);
     average = highest_avg;
     printf("Bin Radius: %f\n",bin_radius);
     printf("Average dispersion estimate (%u): %f Kbps\n",limit,average);
@@ -221,7 +225,6 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
 void calculate_autoc()
 {
 	double   autocv;      // Autocovariance value
-	double   ac_value;    // Computed autocorrelation value to be returned
 	double   mean;
 	double   var;
 	int      i,lag;           // Loop counter
@@ -236,15 +239,13 @@ void calculate_autoc()
 		var = var + (pow((autoc_reverse_estimates[i] - mean), 2.0) / N);
 
     printf("Mean: %f \tVariance: %f\n",mean,var);
-	for(lag=0;lag<(N-1);lag++)
+	for(lag=N/64;lag<(N-1);lag++)
 	{
 		autocv = 0.0;
 		for (i=0; i<(N - lag); i++)
 			autocv = autocv + ((autoc_reverse_estimates[i] - mean) * (autoc_reverse_estimates[i+lag] - mean));
 		autocv = (1.0 / (N - lag)) * autocv;
-		ac_value = autocv / var;
-        if(ac_value>0.01)
-            printf("Lag:%f %f\n",(float)(AUTOC_MAXIMUM_ESTIMATE/(lag+1.5)),ac_value);
+		ac_value[lag] = autocv / var;
 	}
 
 }
