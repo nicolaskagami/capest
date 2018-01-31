@@ -127,12 +127,8 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
 {  
     float delta_S1_it = (float) (source_in_timestamp- last_s1_it);   
     float delta_S2_it = (float) (target_in_timestamp- last_s2_it);   
-    if(delta_S2_it<(bin_radius/10))//10 units per bin radius
-        return;
-    //if(last_s1_it && (delta_S1_it>delta_S2_it))
-    //{
-    //    return;
-    //}
+    //if(delta_S2_it<(bin_radius/10))//10 units per bin radius
+     //   return;
     //float estimate = (float) (8000*(second_to_last_length+last_length))/delta_S2_it;
     float estimate = (float) (8000*(last_length))/delta_S2_it;
     last_estimates[estimate_iterator++%ESTIMATE_SAMPLE_AMOUNT] = estimate;
@@ -146,18 +142,13 @@ void submit(uint32_t ip_length,uint32_t swid_source, uint32_t swid_target, uint3
     for(i=0;i<limit;i++)
         ordered_estimates[i] = last_estimates[i];
     qsort(ordered_estimates,limit,sizeof(uint32_t),compare);
-    //average = ordered_estimates[(uint32_t)(limit/2)];
 
- //   if(estimate > 1000000)
-  //  {
-  //      printf("Estimate: %f Delta: %f Length %d\n",estimate,delta_S2_it,(second_to_last_length+last_length));
-  //  }
     second_to_last_length = last_length;
     last_length = ip_length;
     last_s1_it = source_in_timestamp;
     last_s2_it = target_in_timestamp;
 
-    if(limit< 100)
+    if(limit< 1000)
         return;
 
     float highest_count = 0;
