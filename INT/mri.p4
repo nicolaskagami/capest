@@ -1,4 +1,3 @@
-/* -*- P4_16 -* */
 #include <core.p4>
 #include <v1model.p4>
 
@@ -8,14 +7,26 @@ const bit<16> ETH_TYPE_NSH = 0x900;
 const bit<8> NSH_TYPE_IPV4 = 0x02;
 const bit<5>  IPV4_OPTION_MRI = 31;
 
-#define BIN_STEP 64
-
 #define MAX_HOPS 9
-#define NUM_PACKETS 128 
+
+//CAPEST Parameters
+#define NUM_PACKETS 128  
+#define MIN_BIN_SIZE 128
 #define MAX_T_BIN 16
 #define MAX_F_BIN 16
+
+//Bin Size Heuristic Parameters
+#define UPPER_VARIANCE_LIMIT 15000
+#define ZEROTH_BIN_LIMIT 100
+
+//Utilization Estimation Parameters
+#define PACKETS_PER_GROUP 1024
+#define NUM_GROUPS 16
+
+//CAPEST Macros
 #define REPEAT(x) x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;
-#define REPEAT_PACKETS(x) x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x; 
+#define REPEAT_PACKETS(x) x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;  
+//#define REPEAT_PACKETS(x) x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x;x; 
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -270,14 +281,23 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
     register<bit<16>>(512) last_length;
     register<bit<16>>(1) num_packets;
 
-    register<bit<32>>(1024) estimates;
-    register<bit<32>>(1024) inv_estimates;
+    register<bit<32>>(NUM_PACKETS) estimates;
+    //register<bit<32>>(NUM_PACKETS) inv_estimates;
 
-    register<bit<32>>(128*MAX_T_BIN) T_bin;
+    register<bit<48>>(NUM_PACKETS) timestamps;
+    register<bit<32>>(NUM_PACKETS) lengths;
+
+    register<bit<32>>(2*MAX_T_BIN) T_bin;
     register<bit<32>>(MAX_F_BIN) F_bin;
 
     register<int<32>>(MAX_T_BIN) autocorrelation;
     register<bit<32>>(1) bin_size_reg;
+
+    //Utilization Estimation
+    register<bit<32>>(NUM_GROUPS) groups_size;
+    register<bit<48>>(NUM_GROUPS) groups_timestamp;
+    register<bit<32>>(1) intra_group_index;
+    register<bit<32>>(1) inter_group_index;
 
 
     action add_mri_option()
@@ -322,9 +342,9 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 
         //Calculating Estimate
         bit<32> interval = (bit<32>)(standard_metadata.ingress_global_timestamp - last_pkt_ts);
-        bit<32> normalized_size = (8000*(bit<32>)last_pkt_length);
+        bit<32> normalized_size = (8000*(bit<32>)hdr.ipv4.totalLen); //First or seconds packet's len?
         bit<32> estimate = (normalized_size) ^ (interval); //Kbps
-        bit<32> inv_estimate = 1000000 ^ estimate;// micro seconds per bit
+        //bit<32> inv_estimate = 1000000000 ^ estimate;// micro seconds per bit
 
         //Updating last packet info
         last_timestamp.write((bit<32>)standard_metadata.ingress_port,standard_metadata.ingress_global_timestamp);
@@ -333,31 +353,70 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         //Save nth estimate
         num_packets.read(num_pkts,(bit<32>)0);
         estimates.write((bit<32>)num_pkts,estimate);
-        inv_estimates.write((bit<32>)num_pkts,inv_estimate);
+        //inv_estimates.write((bit<32>)num_pkts,inv_estimate);
+
+        //Gathering Timestamps and Lengths (for available bandwidth)
+        timestamps.write((bit<32>)num_pkts,standard_metadata.ingress_global_timestamp);
+        lengths.write((bit<32>)num_pkts,(bit<32>)hdr.ipv4.totalLen);
 
         //Counting Packets
         num_pkts = num_pkts + 1;
-        if(num_pkts == NUM_PACKETS)
-            num_pkts = 0;
+        if(num_pkts == NUM_PACKETS){num_pkts = 0;}
         num_packets.write((bit<32>)0,num_pkts);
 
         bit<32> bin_size;//kbps (debug)
         bin_size_reg.read(bin_size,0);
-        if(bin_size==0){bin_size=BIN_STEP;}
-        //bit<32> T_bin_size = (1000000000/(128*MAX_T_BIN*MAX_F_BIN))/bin_size; //May be better parameterized NEEDS '/'
+        if(bin_size<MIN_BIN_SIZE){bin_size=MIN_BIN_SIZE;}
         bit<32> max_T = 1000000000/(128*MAX_T_BIN*MAX_F_BIN);
         bit<32> T_bin_size = max_T^bin_size; //May be better parameterized NEEDS '/'
 
         hdr.mri.count = hdr.mri.count + 1;
         hdr.caps.push_front(1);
-        hdr.caps[0].swid = (bit<32>) id;
-        hdr.caps[0].it = inv_estimate ^ T_bin_size;
-        hdr.caps[0].et = (bit<32>) estimate ^ bin_size;
+        hdr.caps[0].swid = (bit<32>) 10*id + (bit<32>)standard_metadata.ingress_port;
+        hdr.caps[0].it = (bit<32>) standard_metadata.ingress_global_timestamp;
+        hdr.caps[0].et = (bit<32>) interval;
 
         hdr.nsh.nsh_length = hdr.nsh.nsh_length + 3;
         hdr.nsh_context.metadata_length = hdr.nsh_context.metadata_length + 12;
+
+
+        //Utilization Estimation
+        bit<32> intra_index;
+        bit<32> inter_index;
+        bit<48> timestamp;
+        bit<32> accumulated_size;
+
+        intra_group_index.read(intra_index,0);
+        inter_group_index.read(inter_index,0);
+
+        groups_timestamp.read(timestamp,inter_index);
+        groups_size.read(accumulated_size,inter_index);
+
+        if(intra_index == 0)
+        {
+            timestamp = standard_metadata.ingress_global_timestamp;
+            accumulated_size = 0;
+        }
+
+        accumulated_size = accumulated_size + (bit<32>)hdr.ipv4.totalLen;
+        groups_timestamp.write(inter_index,timestamp);
+        groups_size.write(inter_index,accumulated_size);
+
+        intra_index = intra_index + 1;
+        if(intra_index >= PACKETS_PER_GROUP)
+        {
+            intra_index = 0;
+            inter_index = inter_index + 1;    
+            if(inter_index >= NUM_GROUPS)
+            {
+                inter_index = 0;
+            }
+        }
+
+        intra_group_index.write(0,intra_index);
+        inter_group_index.write(0,inter_index);
     }
-    action add_probe() 
+    action add_probe(switchID_t id) 
     {    
         //Variables
         bit<32> estimate;
@@ -368,58 +427,73 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         bit<32> bin_lag_aux;
 
         bin_size_reg.read(bin_size,0);
-        if(bin_size==0){bin_size=BIN_STEP;}
+        if(bin_size<MIN_BIN_SIZE){bin_size=MIN_BIN_SIZE;}
 
         //Cleanup
         index=0;
-        REPEAT(
-        F_bin.write(index,0);
-        T_bin.write(index,0);index=index+1;)
+        REPEAT
+        (
+            F_bin.write(index,0);
+            T_bin.write(index,0);index=index+1;
+        )
 
-        //Calculate Temporal
+        //Calculate Temporal bin size
         bit<32> max_T = 1000000000/(128*MAX_T_BIN*MAX_F_BIN);
         bit<32> T_bin_size = max_T^bin_size; //May be better parameterized NEEDS '/'
 
         //Translate to bins
         index=0;
-        REPEAT_PACKETS(
-        estimates.read(estimate,index);
-        bin_index = estimate ^ bin_size;if(bin_index>=MAX_F_BIN){bin_index=MAX_F_BIN-1;}
-        F_bin.read(bin_aux,bin_index); bin_aux = bin_aux +1; F_bin.write(bin_index,bin_aux);
-        bin_index=(1000000000^estimate)^T_bin_size;if(bin_index>=MAX_T_BIN){bin_index=MAX_T_BIN-1;}
-        T_bin.read(bin_aux,bin_index);bin_aux=bin_aux +1;T_bin.write(bin_index,bin_aux);
-        
-        index=index+1;
+        REPEAT_PACKETS
+        (
+            estimates.read(estimate,index);
+
+            bin_index = estimate ^ bin_size;
+            if(bin_index>=MAX_F_BIN){bin_index=MAX_F_BIN-1;}
+            F_bin.read(bin_aux,bin_index); 
+            bin_aux = bin_aux +1; 
+            F_bin.write(bin_index,bin_aux);
+
+            bin_index=(1000000000^estimate)^T_bin_size;
+            if(bin_index>=MAX_T_BIN){bin_index=MAX_T_BIN-1;}
+            T_bin.read(bin_aux,bin_index);
+            bin_aux=bin_aux +1;
+            T_bin.write(bin_index,bin_aux);
+            
+            index=index+1;
         )
 
-        //REPEAT_PACKETS(inv_estimates.read(estimate,index);bin_index=estimate^T_bin_size;if(bin_index>=MAX_T_BIN){bin_index=MAX_T_BIN-1;}
-        //T_bin.read(bin_aux,bin_index);bin_aux=bin_aux +1;T_bin.write(bin_index,bin_aux);index=index+1;)
-
         //Calculate T Bin Mean
-        //maybe multiply by 1000 to gain precision
-        //mean+= t_bin[0] … mean+=t_bin[];
-        //mean = mean ^ MAX_T_BIN;
         bit<32> mean;
-        mean = 8;//Shortcut: mean = 1000* number of estimates / number of T bins
+        mean = NUM_PACKETS/MAX_T_BIN;//Shortcut: mean = 1000* number of estimates / number of T bins
 
         //Calculate T Bin Variance
         bit<32> var=0;
         int<32> var_aux;
 
         index=0;
-        REPEAT(T_bin.read(bin_aux,index);var_aux=(int<32>)(bin_aux-mean);var=var+(bit<32>)(var_aux*var_aux);index=index+1;)
+        REPEAT
+        (
+            T_bin.read(bin_aux,index);
+            var_aux=(int<32>)(bin_aux-mean);
+            var=var+(bit<32>)(var_aux*var_aux);
+            index=index+1;
+        )
 
         //Autocorrelation
         bit<32> lag;
         int<32> autocv;
         bit<32> limit;
+
+
         //From 0 to MAX_LAG
         lag=0;
         REPEAT
         ( 
-            autocv=0;limit=(MAX_T_BIN-lag);
-            index=0;
+            autocv=0;
+            limit=(MAX_T_BIN-lag);
+
             //From 0 to (MAX_T_BIN-LAG)
+            index=0;
             REPEAT
             (
                 T_bin.read(bin_aux,index);
@@ -427,6 +501,7 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
                 autocv=autocv+(int<32>)(bin_aux+bin_lag_aux);
                 if(index<(limit-1)){index=index+1;}
             )
+
             autocv = (int<32>)((bit<32>)autocv ^ limit) - (int<32>)mean;
             autocorrelation.write(lag,autocv);
             lag=lag+1;
@@ -442,37 +517,79 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         REPEAT
         (
             F_bin.read(bin_aux,index);
-            temporal_index=(1000000000^(index*bin_size)^T_bin_size);
+            temporal_index = (1000000000^ (index*bin_size) ^T_bin_size);
             if(temporal_index>=MAX_T_BIN){temporal_index=MAX_T_BIN-1;}
             autocorrelation.read(autocv,temporal_index);
             contestant = (int<32>)bin_aux*autocv;
-            if(contestant>highscore){highscore=contestant;final_estimate=(index+1)*(bin_size);};
+            if(contestant>highscore)
+            {
+                highscore=contestant;
+                final_estimate=index*(bin_size)+(bin_size^2);
+            };
             index=index+1;
         )
          
-        //Adapt bin size
-        //F_bin.read(bin_aux,0);
-        //if(bin_aux>10*mean){bin_size=bin_size-BIN_STEP;}
-        F_bin.read(bin_aux,(MAX_F_BIN)-1);
-        if(bin_aux>mean){bin_size=bin_size+(bin_size^8);}
-        else if(var>(15000)){bin_size=bin_size-(bin_size^8);}
-        bin_size_reg.write(0,bin_size);
-
         //DEBUG
         //bit<32> a;teste.read(a,0);a=a+1;if(a>=16){a=0;}teste.write(0,a);
         bit<32> f;
         bit<32> t;
         F_bin.read(f,0); T_bin.read(t,0);
-        
+
+        //Determine Utilization
+        bit<32> bytes_aux;
+        bit<48> old_timestamp;
+        bit<48> current_timestamp;
+
+        bit<32> inter_index;
+        bit<48> accumulated_size = 0;
+
+        inter_group_index.read(inter_index,0);
+
+        //Determine Size 
+        index=0;
+        REPEAT
+        (
+            groups_size.read(bytes_aux,index);
+            accumulated_size = accumulated_size + (bit<48>) bytes_aux;
+            index = index + 1;
+        )
+        //Remove influence from current unfinished group
+        groups_size.read(bytes_aux,inter_index);
+        accumulated_size = accumulated_size - (bit<48>) bytes_aux;
+
+        //Determine Temporal Delta
+
+        groups_timestamp.read(current_timestamp,inter_index);
+        inter_index = inter_index + 1;
+        if(inter_index >= NUM_GROUPS) 
+            inter_index = 0;
+
+        groups_timestamp.read(old_timestamp,inter_index);
 
         hdr.mri.count = hdr.mri.count + 1;
         hdr.caps.push_front(1);
-        hdr.caps[0].swid = (bit<32>) var;
-        hdr.caps[0].it = (bit<32>) bin_size;
+        hdr.caps[0].swid = (bit<32>) id;
+        hdr.caps[0].it = (bit<32>) ((8000*accumulated_size) ^(current_timestamp - old_timestamp));
         hdr.caps[0].et = (bit<32>) final_estimate;
 
         hdr.nsh.nsh_length = hdr.nsh.nsh_length + 3;
         hdr.nsh_context.metadata_length = hdr.nsh_context.metadata_length + 12;
+
+        //Adapt bin size
+        if(final_estimate>(MAX_T_BIN-1)*bin_size)
+        {
+            bin_size=bin_size+(bin_size^16);
+        } else if(var>(UPPER_VARIANCE_LIMIT))//Else, if variance is really high
+        {
+            bin_size=bin_size-(bin_size^8);        
+        }         
+        bit<32> bin_aux2;
+        F_bin.read(bin_aux2,0);
+        if(bin_aux2 > ZEROTH_BIN_LIMIT)
+        {
+            bin_size=bin_size^2;
+        }
+        bin_size_reg.write(0,bin_size);
     }
     action remove_swid()
     {
@@ -487,23 +604,25 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         actions        = { add_swid; NoAction; }
         default_action =  NoAction();      
     }
+    table probe 
+    {
+        actions        = { add_probe; NoAction; }
+        default_action =  NoAction();      
+    }
     
-    
-    apply {
-        if (hdr.ipv4.isValid()) {
-            
-            if (!hdr.mri.isValid()) {
+    apply 
+    {
+        if (hdr.ipv4.isValid()) 
+        {
+            if (!hdr.mri.isValid()) 
                 add_mri_option();
-            }    
             
             swid.apply();
-            if(hdr.ipv4.dstAddr==0xA00020A){
-                add_probe();
-            }
-            //if(hdr.mri.count>2){
-            if(standard_metadata.egress_port==1){
+            if(hdr.ipv4.dstAddr==0xA00030A)
+                probe.apply();//add_probe();
+
+            if(standard_metadata.egress_port==1)
                 remove_swid();
-                }
         }
     }
 }
@@ -513,8 +632,10 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 *************************************************************************/
 
 
-control computeChecksum(inout headers  hdr,inout metadata meta){
-    apply {
+control computeChecksum(inout headers  hdr,inout metadata meta)
+{
+    apply 
+    {
         update_checksum(hdr.ipv4.isValid(),
             {
                 hdr.ipv4.version,
@@ -538,8 +659,10 @@ control computeChecksum(inout headers  hdr,inout metadata meta){
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
 
-control DeparserImpl(packet_out packet, in headers hdr) {
-    apply {
+control DeparserImpl(packet_out packet, in headers hdr) 
+{
+    apply 
+    {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.nsh);
         packet.emit(hdr.nsh_context);
@@ -562,4 +685,3 @@ egress(),
 computeChecksum(),
 DeparserImpl()
 ) main;
-/* -*- P4_16 -* */
