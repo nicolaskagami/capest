@@ -1,3 +1,18 @@
+/* 
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR 
+ * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Author: Nicolas Kagami
+ * Name: Capest Sink
+ * Usage: sink <interface> <hostname> <port>
+ * Description: Sniff out passing packets on <interface> for Capest INT capsules and sends to <hostname>:<port>.
+*/
 #include<pcap.h>
 #include<stdio.h>
 #include<stdlib.h> // for exit()
@@ -120,7 +135,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
     //PrintData(buffer+36,iphdrlen-22);
     //PrintData(send_buffer+2,send_amount);
     //printf("\n");
-    fflush(stdout);
+    //fflush(stdout);
 }
  
 void print_nsh_packet(u_char * buffer, int size)

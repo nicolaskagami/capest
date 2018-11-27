@@ -7,13 +7,15 @@
           "cli": true,
           "pcap_dump": false,
           "bmv2_log": false,
-          "links": [["h1", "s1","bw=1"], ["s1", "s2"], ["s1", "s3"], ["s3", "s2"], ["s2", "h2"], ["s3", "h3"]],
+          "links": [["h1", "s1"], ["s1", "s2"], ["s2", "s3"],["s3","s4"], ["s2", "h2"], ["s3", "h3"], ["s4","h4"]],
           "hosts": {
             "h1": {
             },
             "h2": {
             },
             "h3": {
+            },
+            "h4": {
             }
 
           },
@@ -26,6 +28,9 @@
               },
               "s3": {
                   "entries": "s3-commands.txt"
+              },
+              "s4": {
+                  "entries": "s4-commands.txt"
               }
           }
 	    }

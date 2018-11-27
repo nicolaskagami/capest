@@ -1,0 +1,7 @@
+table_set_default ipv4_lpm drop
+table_set_default live extraction_procedure 4 
+table_set_default probe probe_procedure 4
+table_add ipv4_lpm ipv4_forward 10.0.4.10/32 => 00:04:00:00:00:04 1
+table_add ipv4_lpm ipv4_forward 10.0.2.10/32 => f2:ed:e6:df:4e:fa 2
+table_add ipv4_lpm ipv4_forward 10.0.3.10/32 => f2:ed:e6:df:4e:fb 2 
+table_add ipv4_lpm ipv4_forward 10.0.1.10/32 => f2:ed:e6:df:4e:fc 2 

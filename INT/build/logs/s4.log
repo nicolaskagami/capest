@@ -1,0 +1,4 @@
+Warning: you requested the nanomsg event logger, but bmv2 was compiled without -DBMELOG, and the event logger cannot be activated
+Calling target program-options parser
+Adding interface s4-eth1 as port 1
+Adding interface s4-eth2 as port 2
