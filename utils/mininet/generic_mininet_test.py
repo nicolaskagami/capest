@@ -180,7 +180,7 @@ def main():
         setupLinks(nom_cap)
         call('sudo rm ./.cplayer*',shell=True)
         print "Running: " + str(method) + "," + str(nom_cap) + "," + str(num_videos)
-        capest = subprocess.Popen('sudo script -c "../sink/capest_visualizer 6666" -f ../INT/.capestd &',shell=True)
+        capest = subprocess.Popen('sudo script -c "../sink/capest_visualizer 6666" -f ./.capestd &',shell=True)
         h1.cmd('sudo killall iperf3')
         h3.cmd('iperf3 -s &')
         h1.cmd('iperf3 -c 10.0.3.10 -b %sK -t 60 & > ./iperf' % num_videos)

@@ -165,8 +165,7 @@ def main():
     h1.cmd('ifconfig %s-eth0 mtu 2000 up'% host.name ,shell=True)
     h1.cmd('tc qdisc add dev %s-eth0 root tbf rate 16Mbit latency 10ms burst 2000' % host.name,shell=True)
 
-    subprocess.Popen('sudo /home/nicolassk/capest/sink/sink s4-eth2 127.0.0.1 6666 &',shell=True)
-    #subprocess.Popen('sudo /home/nicolassk/capest/sink/capestd 6666 >> /home/nicolassk/capest/INT/.capestd & ',shell=True)
+    subprocess.Popen('sudo ../sink/sink s4-eth2 127.0.0.1 6666 &',shell=True)
     sleep(60)
 
     def setupLinks(capacity):
@@ -178,7 +177,7 @@ def main():
     def runTest(method,nom_cap):
         setupLinks(nom_cap)
         print "Running Factor Test: " + str(method) + "," + str(nom_cap) 
-        capest = subprocess.Popen('sudo script -c "/home/nicolassk/capest/sink/capestd 6666 | grep \'Swid: 3\'" -f /home/nicolassk/capest/INT/.capestd &',shell=True)
+        capest = subprocess.Popen('sudo script -c "../sink/capest_visualizer 6666 | grep \'Swid: 3\'" -f ./.capestd &',shell=True)
         h1.cmd('sudo killall iperf3')
         h3.cmd('iperf3 -s &')
         h1.cmd('iperf3 -c 10.0.3.10 -t 60 & > ./iperf')

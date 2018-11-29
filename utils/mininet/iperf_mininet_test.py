@@ -168,7 +168,7 @@ def main():
     h1.cmd('sudo python3 -m http.server 80 &')
     h3.cmd('iperf -s &')
 
-    call('sudo /home/nicolassk/capest/sink/sink s4-eth2 127.0.0.1 6666 &',shell=True)
+    call('sudo ../sink/sink s4-eth2 127.0.0.1 6666 &',shell=True)
     sleep(60)
 
     def setupLinks(capacity):
@@ -181,9 +181,9 @@ def main():
         setupLinks(nom_cap)
         call('sudo rm ./.cplayer*',shell=True)
         print "Running: " + str(method) + "," + str(nom_cap) + "," + str(num_videos)
-        capest = subprocess.Popen('sudo script -c "/home/nicolassk/capest/sink/capestd 6666" -f /home/nicolassk/capest/INT/.capestd &',shell=True)
+        capest = subprocess.Popen('sudo script -c "../sink/capest_visualizer 6666" -f ./.capestd &',shell=True)
         for x in range(0,num_videos):
-            h3.cmd('./cplayer 10.0.1.10 muse 32 %s > .cplayer%s &' % (x,x))
+            h3.cmd('./cplayer 10.0.1.10 video 32 %s > .cplayer%s &' % (x,x))
         sleep(120)
         print "  Testing"
         h1.cmd('ping 10.0.3.10 -i 0.1 -c 600 -q | tail -n 2 > .pingdata &')
