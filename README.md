@@ -6,8 +6,6 @@ It is written in P4 and makes use of a simple In-band Network Telemetry implemen
 * [Mininet](http://mininet.org/) - Network emulator
 * [p4c](https://github.com/p4lang/p4c) - P4 Compiler
 * [p4c-bm](https://github.com/p4lang/p4c-bm) - P4 Behavioral Model
-## Installing
---Work in Progress--
 
 ## Running Tests
 The [build](https://github.com/nicolaskagami/capest/tree/master/build) directory includes a variety of files that constitute a testing environment.
